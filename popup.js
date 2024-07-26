@@ -18,12 +18,50 @@ document.addEventListener('DOMContentLoaded', function () {
   });
   
   function saveText(text, url) {
-    let data = { text: text, url: url || '' };
-    chrome.storage.local.get('savedTexts', function (result) {
-      let savedTexts = result.savedTexts || [];
-      savedTexts.push(data);
-      chrome.storage.local.set({ savedTexts: savedTexts }, function () {
-        alert('Text saved!');
+    chrome.storage.local.get('user', function(result) {
+      const user = result.user || 'defaultUser';
+      let data = { user: user, text: text, url: url || '' };
+      fetch('http://localhost:5000/saveText', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(data)
+      })
+      .then(response => response.json())
+      .then(data => {
+        alert('Text saved to server!');
+        loadSavedTexts(); // Reload the saved texts to display the new one
+      })
+      .catch((error) => {
+        console.error('Error:', error);
+      });
+    });
+  }
+  
+  function loadSavedTexts() {
+    chrome.storage.local.get('user', function(result) {
+      const user = result.user || 'defaultUser';
+      fetch(`http://localhost:5000/getTexts/${user}`)
+      .then(response => response.json())
+      .then(data => {
+        let list = document.getElementById('saved-texts-list');
+        list.innerHTML = ''; // Clear the list first
+        data.forEach(item => {
+          let listItem = document.createElement('li');
+          listItem.textContent = item.text;
+          if (item.url) {
+            let link = document.createElement('a');
+            link.href = item.url;
+            link.textContent = ' (URL)';
+            link.target = '_blank';
+            listItem.appendChild(link);
+          }
+          list.appendChild(listItem);
+        });
+      })
+      .catch((error) => {
+        console.error('Error:', error);
       });
     });
   }
